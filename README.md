@@ -1,4 +1,4 @@
-avoca-plugin-framework
+The Avoca Plugin Framework
 ======================
 
-A Wordpress plugin class that serves as an extendable base for modular Wordpress plugins geared towards rapid prototyping.
+The *Avoca Plugin Framework* is a Wordpress plugin class that enables the rapid creation of modularized, prototype-grade plugins by way of extending the *Avoca Plugin* class.
