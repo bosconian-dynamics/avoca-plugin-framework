@@ -11,34 +11,34 @@
  * Wordpress version 3.4.x
  *
  * @category   Core
- * @package    AvocaWordpressEngine
+ * @package    AvocaWeb\PluginFramework
  * @author     Adam Bosco <adam@avocaweb.net>
  * @copyright  2009-2013 Avoca Web Services, LLC. (a subsidiary of Alpine Venture Company, LLC)
  * @link       http://avocaweb.net
- * @since      File available since Release 0.3.2
+ * @since      
  */
 
-class AvocaPlugin {
-	const FORCE_DEBUG	= AvocaPluginFramework::FORCE_DEBUG;	//Force debugging regardless of WP_DEBUG.
+namespace AvocaWeb\PluginFramework;
+
+class Plugin {
+	/* Note that there are no actual public properties. This is because public properties should be reserved
+	 * for the use of the extending plugin - either by way of explicit declaration or adding to the AvocaPlugin
+	 * OOP API through prefixed method names or association in the plugin configuration array. */
+	const FORCE_DEBUG	= PluginFramework::FORCE_DEBUG;	//Force debugging regardless of WP_DEBUG.
 
 	//Filestructure configuration
-	protected $_componentDirName	= 'components';		//Modular functionality
-
-	const FORCE_DEBUG	= TRUE;				//Force debugging regardless of WP_DEBUG
-
-	//Filestructure configuration
-	protected $_componentDirName	= 'components';		//Modular functionality
-	protected $_includeDirName		= 'includes';		//Engine core
-	protected $_libraryDirName		= 'lib';			//3rd party packages
+	protected $_componentDirName		= 'components';		//Modular functionality
+	protected $_includeDirName			= 'includes';		//Engine core
+	protected $_libraryDirName			= 'lib';			//3rd party packages
 
 	//AvocaPluginComponent convention configuration
-	protected $_componentPrefix		= 'AP';				//Autoload components prefixed with this...
-	protected $_componentPostfix	= 'Component';		//and post-fixed with this from the components folder
-	protected $_autohookPrefix		= 'hook_';			//Automagically attach component methods prefixed with this to the Wordpress Plugin API
-	protected $_ajaxHandlerPrefix	= 'ajax_';			//Treat component methods prefixed with this as AJAX handlers
-	protected $_apiHandlerPrefix	= 'api_';			//Treat component methods prefixed with this string as handlers for the component's OOP-exposed API
-	protected $_componentDomainLength= 8;				//Limit auto-generated component domains to this number of characters
-	protected $_securityKey			= 'secTok';			//Where to look for security nonces in request data
+	protected $_componentPrefix			= 'AP';				//Autoload components prefixed with this...
+	protected $_componentPostfix		= 'Component';		//and post-fixed with this from the components folder
+	protected $_autohookPrefix			= 'hook_';			//Automagically attach component methods prefixed with this to the Wordpress Plugin API
+	protected $_ajaxHandlerPrefix		= 'ajax_';			//Treat component methods prefixed with this as AJAX handlers
+	protected $_apiHandlerPrefix		= 'api_';			//Treat component methods prefixed with this string as handlers for the component's OOP-exposed API
+	protected $_componentDomainLength	= 8;				//Limit auto-generated component domains to this number of characters
+	protected $_securityKey				= 'secTok';			//Where to look for security nonces in request data
 
 	//Singleton configuration
 	private $_instance;				//The actual instance of the extended AvocaPlugin. All AvocaPlugins should be singletons - there is never any need for multiple instances of the same extended AvocaPlugin.
@@ -104,7 +104,7 @@ class AvocaPlugin {
 			);
 		}
 
-		AvocaPluginFramework::registerJsApi( &$this, $data );
+		PluginFramework::registerJsApi( $this, $data );
 	}
 
 //(GET) Methods for accessing AP configuration data
@@ -155,17 +155,17 @@ class AvocaPlugin {
 	//Calculates a super-basic alphanumeric abbreviation for a string based on capitalization and length. If no length is specified, defaults to componentDomainLength property
 	public function abbreviate( $strString, $intLength = NULL ) {
 		//Set up the string for processing
-		$strString = preg_replace("/[^A-Za-z0-9]/", '', $strString);	//Remove non-alphanumeric characters
-		$strString = ucfirst( $strString );								//Capitalize the first character (helps with abbreviation calcs)
-		$stringIndex = 0;
+		$strString 		= preg_replace("/[^A-Za-z0-9]/", '', $strString);		//Remove non-alphanumeric characters
+		$strString 		= ucfirst( $strString );								//Capitalize the first character (helps with abbreviation calcs)
+		$stringIndex 	= 0;
 
 		//Figure out everything we need to know about the resulting abbreviation string
-		$uppercaseCount = preg_match_all('/[A-Z]/', $strString, $uppercaseLetters, PREG_OFFSET_CAPTURE);	//Record occurences of uppercase letters and their indecies in the $uppercaseLetters array, take note of how many there are
-		$targetLength = isset( $intLength ) ? intval( $intLength ) : $this->_componentDomainLength;			//Maximum length of the abbreviation
-		$uppercaseCount = $uppercaseCount > $targetLength ? $targetLength : $uppercaseCount; 				//If there are more uppercase letters than the target length, adjust uppercaseCount to ignore overflow
-		$targetWordLength = round( $targetLength / intval( $uppercaseCount ) );								//How many characters need to be taken from each uppercase-designated "word" in order to best meet the target length?
-		$abbrevLength = 0;		//How long the abbreviation currently is
-		$abbreviation = '';		//The actual abbreviation
+		$uppercaseCount 	= preg_match_all('/[A-Z]/', $strString, $uppercaseLetters, PREG_OFFSET_CAPTURE);	//Record occurences of uppercase letters and their indecies in the $uppercaseLetters array, take note of how many there are
+		$targetLength 		= isset( $intLength ) ? intval( $intLength ) : $this->_componentDomainLength;			//Maximum length of the abbreviation
+		$uppercaseCount 	= $uppercaseCount > $targetLength ? $targetLength : $uppercaseCount; 				//If there are more uppercase letters than the target length, adjust uppercaseCount to ignore overflow
+		$targetWordLength 	= round( $targetLength / intval( $uppercaseCount ) );								//How many characters need to be taken from each uppercase-designated "word" in order to best meet the target length?
+		$abbrevLength 		= 0;		//How long the abbreviation currently is
+		$abbreviation 		= '';		//The actual abbreviation
 
 		//Create respective arrays for the occurence indecies and the actual characters of uppercase characters within the string
 		for($i = 0; $i < $uppercaseCount; $i++) {
@@ -326,7 +326,7 @@ class AvocaPlugin {
 		$this->_debugMode = ( $boolDebugMode === TRUE || self::FORCE_DEBUG ) ? TRUE : FALSE;
 
 		if( $this->_debugMode ) {
-			require_once( AvocaPluginFramework::getDir('includes') . '/AvocaPluginDebugger.php' );
+			require_once( PluginFramework::getDir('includes') . '/AvocaPluginDebugger.php' );
 
 			AvocaPluginDebugger::start();
 
@@ -377,7 +377,6 @@ class AvocaPlugin {
 				'uri' => array(
 						'plugin'		=> $pluginRootURI,
 						'components'	=> $pluginRootURI . '/' . $this->_componentDirName,
-						'libs'			=> $pluginRootURI . '/' . $this->_libraryDirName
 						'includes'		=> $pluginRootURI . '/' . $this->_includeDirName,
 						'libs'			=> $pluginRootURI . '/' . $this->_libraryDirName
 					)
@@ -414,7 +413,7 @@ class AvocaPlugin {
 		if( !class_exists( $strComponentClass ) )
 			$this->fatal( 'Could not load component "' . $strComponentHandle . '": no such class "' . $strComponentClass . '" in loaded file (' . $strComponentFile . ').' );
 
-		if( !is_subclass_of( $strComponentClass, 'AvocaPluginComponent' ) )
+		if( !is_subclass_of( $strComponentClass, __NAMESPACE__ . '\\PluginComponent' ) )
 			$this->fatal( 'Component class "' . $strCompnentClass . '" must extend AvocaPluginComponent.' );
 
 		//Load the component

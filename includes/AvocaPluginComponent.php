@@ -17,10 +17,12 @@
  * @since
  */
 
-class AvocaPluginComponent {
+namespace AvocaWeb\PluginFramework;
+
+class PluginComponent {
 	//Overarching plugin information
-	protected $_avocaPlugin;	 //Direct reference to the encompassing extended AvocaPlugin class
-	protected $_avocaPluginClass;//Name of the encompassing class that extends AvocaPlugin
+	protected $_plugin;	 		//Direct reference to the component's parent Plugin
+	protected $_pluginClass;	//Name of the component's parent Plugin-extending class
 
 	//Component configuration
 	protected $_name;			//The pre-and-post-fix-less name of the component used primarily for programmatic access
@@ -29,7 +31,7 @@ class AvocaPluginComponent {
 	protected $_domain;			//Used for namespacing hooks, messages, options, metadata, etc.
 	protected $_directory;		//The absolute path to the directory in which this component resides
 	protected $_version;		//Component version number. Not yet used
-	protected $_dependencies;	//Component dependencies. Can be from other APF Plugins. Not yet used
+	//protected $_dependencies;	//Component dependencies. Can be from other APF Plugins. Not yet used
 
 	//Component assets
 	protected $_scripts;			//Array of scripts queued for loading.
@@ -40,22 +42,22 @@ class AvocaPluginComponent {
 			'::'	=> array(),		//exposed through the __callStatic() magic method as AP::APC::{API call}
 			'->'	=> array()		//exponed through the __call() magic method as AP::APC->{API call}
 		);
-	protected $_nonce;
+	protected $_nonce;				//Security key for this component
 
-	//
+	//Arrays for quick reference
 	protected $_paths;
 	protected $_namespaces;
 
 	//Component constructor - handles interfacing the component with the Wordpress Plugin API. Takes the encompassing plugin's details as arguments (passed during auto-instantiation)
-	public function __construct( &$avocaPlugin, $arComponentConfig ) {
-		if( !is_subclass_of( $avocaPlugin, 'AvocaPlugin' ) )
-			die( 'The 1st argument passed to the APC constructor MUST be an Object that extends AvocaPlugin.' );
+	public function __construct( &$plugin, $arComponentConfig ) {
+		if( !is_subclass_of( $plugin, __NAMESPACE__ . '\\Plugin' ) )
+			die( 'The 1st argument passed to the PluginComponent constructor MUST be an Object that extends the Plugin class.' );
 
-		//Associate component with correct AvocaPlugin
-		$this->_avocaPlugin = $avocaPlugin;
-		$this->_avocaPluginClass = $avocaPlugin->pluginClass;
+		//Associate component with correct Plugin
+		$this->_plugin = $plugin;
+		$this->_pluginClass = $plugin->pluginClass;
 
-		//Component loading routine
+		//Component loading routine. NOTE that reflectively registered methods will overwrite configured.
 		$this->_setupConfiguration( $arComponentConfig );	//Establish a runtime component configuration that we can work with
 		//self::_registerConfiguredScripts();					//Registers the scripts defined in the configuration
 		//self::_registerConfiguredStyles();					//Registers the styles defined in the configuration
@@ -64,7 +66,7 @@ class AvocaPluginComponent {
 		$this->_registerReflectiveAutoHooks();					//Register conventionally named methods as Wordpress hooks.
 		$this->_registerReflectiveApiHandlers();				//Register conventionally named methods to the component OOP API
 
-		$this->addAction( 'init', 'initialize' );				//Generate a nonce for this component
+		$this->addAction( 'init', 'initialize' );				//Generate a nonce for this component at init
 
 		$this->doComponentAction( 'loaded' );
 	}
@@ -126,7 +128,7 @@ class AvocaPluginComponent {
 	}
 
 	public function getAbsoluteDomain( $strDelimiter = '-' ) {
-		return $this->_avocaPlugin->domain . $strDelimiter . $this->_domain;
+		return $this->_plugin->domain . $strDelimiter . $this->_domain;
 	}
 
 	public function getDir( $strType = 'core' ) {
@@ -254,8 +256,8 @@ class AvocaPluginComponent {
 	/*public static function getPluginInfo( $strDataField ) {
 		$strDataField	= ucfirst( $strDataField );
 
-		if( method_exists( self::_avocaPlugin, 'get' . $strDataField ) && is_callable( self::_avocaPluginClass . '::get' . $strDataField ) )
-			return call_user_func( self::_avocaPluginClass . '::get' . $strDataField );
+		if( method_exists( self::_plugin, 'get' . $strDataField ) && is_callable( self::_pluginClass . '::get' . $strDataField ) )
+			return call_user_func( self::_pluginClass . '::get' . $strDataField );
 		else
 			self::error('No "getter" method exists for AvocaPlugin field ' . $strDataField);
 
@@ -280,7 +282,7 @@ class AvocaPluginComponent {
 		return str_ireplace( array(
 				$strNamespaceDelimiter,
 				$this->_domain,
-				$this->_avocaPlugin->domain 
+				$this->_plugin->domain 
 			), '', $strString );
 	}
 
@@ -330,7 +332,7 @@ class AvocaPluginComponent {
 	public function debug( $strMessage, $arTags = NULL, $strSubdomain = NULL ) {
 		$strSubDomain = isset( $strSubDomain ) ? ' :: ' . $strSubdomain : '';
 		$arTags[] = $this->_domain;
-		return call_user_func_array( array( $this->_avocaPlugin, 'debug' ), array( $strMessage, $arTags, $this->_domain . $strSubdomain ) );
+		return call_user_func_array( array( $this->_plugin, 'debug' ), array( $strMessage, $arTags, $this->_domain . $strSubdomain ) );
 	}
 
 	//Throws down namespaced "notice"s
@@ -344,21 +346,21 @@ class AvocaPluginComponent {
 	public function warning( $strMessage, $arTags = NULL, $strSubdomain = NULL ) {
 		$strSubDomain = isset( $strSubDomain ) ? ' :: ' . $strSubdomain : '';
 		$arTags[] = $this->_domain;
-		return call_user_func_array( array( $this->_avocaPlugin, 'warning' ), array( $strMessage, $arTags, $this->_domain . $strSubdomain ) );
+		return call_user_func_array( array( $this->_plugin, 'warning' ), array( $strMessage, $arTags, $this->_domain . $strSubdomain ) );
 	}
 
 	//Throws down namespaced "error" level messages
 	public function error( $strMessage, $arTags = NULL, $strSubdomain = NULL ) {
 		$strSubDomain = isset( $strSubDomain ) ? ' :: ' . $strSubdomain : '';
 		$arTags[] = $this->_domain;
-		return call_user_func_array( array( $this->_avocaPlugin, 'error' ), array( $strMessage, $arTags, $this->_domain . $strSubdomain ) );
+		return call_user_func_array( array( $this->_plugin, 'error' ), array( $strMessage, $arTags, $this->_domain . $strSubdomain ) );
 	}
 
 	//Throws down namespaced "fatal" level messages and terminates execution
 	public function fatal( $strMessage, $arTags = NULL, $strSubdomain = NULL ) {
 		$strSubDomain = isset( $strSubDomain ) ? ' :: ' . $strSubdomain : '';
 		$arTags[] = $this->_domain;
-		return call_user_func_array( array( $this->_avocaPlugin, 'fatal' ), array( $strMessage, $arTags, $this->_domain . $strSubdomain ) );
+		return call_user_func_array( array( $this->_plugin, 'fatal' ), array( $strMessage, $arTags, $this->_domain . $strSubdomain ) );
 	}
 
 //These are all functions hooking into the WP Plugin API. They are being attached via the APC conventional auto-hooks (self::_register_reflective_auto_hooks(), executed on construction)
@@ -489,17 +491,17 @@ class AvocaPluginComponent {
 	//Checks to see if the provided string fits the AP ajax handler naming convention
 	public function isConventionalAjaxHandler( $strMethodName ) {
 		//Does the provided method name have the appropriate prefix?
-		return ( strpos( $strMethodName, $this->_avocaPlugin->ajaxHandlerPrefix ) === 0 );
+		return ( strpos( $strMethodName, $this->_plugin->ajaxHandlerPrefix ) === 0 );
 	}
 
 	//Must be public for user_call_func() access. Checks to see if the provided string fits the AP ajax handler naming convention
 	public function isConventionalAutohook( $strMethodName ) {
 		//Does the provided method name have the appropriate prefix?
-		return ( strpos( $strMethodName, $this->_avocaPlugin->autohookPrefix ) === 0 && strpos( $strMethodName, $this->_avocaPlugin->autohookPrefix) );
+		return ( strpos( $strMethodName, $this->_plugin->autohookPrefix ) === 0 && strpos( $strMethodName, $this->_plugin->autohookPrefix) );
 	}
 
 	public function isConventionalApiHandler( $strMethodName ) {
-		return ( strpos( $strMethodName, $this->_avocaPlugin->apiHandlerPrefix ) === 0 );
+		return ( strpos( $strMethodName, $this->_plugin->apiHandlerPrefix ) === 0 );
 	}
 
 	//Registers new ajax handlers by mapping a key to a member function. If no method is provided, will check to see if a method matching the handler
@@ -543,7 +545,7 @@ class AvocaPluginComponent {
 
 	//Returns the AP configured location of the nonce in the request data
 	protected function _getNonceKey() {
-		return $this->_avocaPlugin->securityKey;
+		return $this->_plugin->securityKey;
 	}
 
 	//Retrieves the security nonce from the request data
@@ -594,7 +596,7 @@ class AvocaPluginComponent {
 			return $this->_ajaxHandlers[ $strAjaxHandlerKey ];
 
 		//If the handler is not registered, 
-		$methodName = $this->_avocaPlugin->ajaxHandlerPrefix . $strAjaxHandlerKey;
+		$methodName = $this->_plugin->ajaxHandlerPrefix . $strAjaxHandlerKey;
 		if( $this->_hasMethod( $methodName ) )
 			return $methodName;
 
@@ -621,7 +623,7 @@ class AvocaPluginComponent {
 		$ajaxHandlerMethods = array_filter( $methods, array( $this, 'isConventionalAjaxHandler' ) );	//Get the method names that follow convention
 
 		while( $handlerMethod = array_pop( $ajaxHandlerMethods ) ) {
-			$key = substr( $handlerMethod, strlen( $this->_avocaPlugin->ajaxHandlerPrefix ) );
+			$key = substr( $handlerMethod, strlen( $this->_plugin->ajaxHandlerPrefix ) );
 			$this->registerAjaxHandler( $key, $handlerMethod );
 		}
 	}
@@ -632,7 +634,7 @@ class AvocaPluginComponent {
 		$autoHookMethods = array_filter( $methods, array( $this, 'isConventionalAutoHook' ) );	//Get the method names that follow convention
 
 		while( $autoHook = array_pop( $autoHookMethods ) )
-			$this->_registerAutohook( substr( $autoHook, strlen( $this->_avocaPlugin->autohookPrefix ) ), $autoHook );
+			$this->_registerAutohook( substr( $autoHook, strlen( $this->_plugin->autohookPrefix ) ), $autoHook );
 	}
 
 	//Examines the component class's mehtods and maps conventionally named methods to the OOP Component API
@@ -683,20 +685,20 @@ class AvocaPluginComponent {
 		
 		$componentClass = get_called_class();	//Figure out what the child class is
 		$this->_className = $componentClass;
-		$componentName = $this->_avocaPlugin->deconventionalizeComponentName( $componentClass );	//Strip any AP conventions from the classname and deem it the component's name
+		$componentName = $this->_plugin->deconventionalizeComponentName( $componentClass );	//Strip any AP conventions from the classname and deem it the component's name
 
 		//TODO: there's no reason to generate default fields if they've already been supplied in the configuration.
 		//TODO: add configuration directives for asset paths
 		$defaultConfig = array(
 				'name'			=> $componentName,
 				'slug'			=> sanitize_title( $componentName ),
-				'domain'		=> $this->_avocaPlugin->componentDomain( $componentName ),			
+				'domain'		=> $this->_plugin->componentDomain( $componentName ),			
 				'className'		=> $componentClass,
 				'version'		=> '1.0',
 				'scripts'		=> array(),
 				'styles'		=> array(),
 				'ajaxHandlers'	=> array(),
-				'directory'		=> $this->_avocaPlugin->getDir('components') . '/' . $componentClass,
+				'directory'		=> $this->_plugin->getDir('components') . '/' . $componentClass,
 				'API'			=> array()
 				//'widgets'		=> array()
 			);
@@ -757,7 +759,7 @@ class AvocaPluginComponent {
 		}
 
 		//Set Up Paths
-		$rootURI = $this->_avocaPlugin->getUri('components') . '/' . $config['className'];		//Figure out the base absolute URI for this component's files
+		$rootURI = $this->_plugin->getUri('components') . '/' . $config['className'];		//Figure out the base absolute URI for this component's files
 
 		//Set up an array of absolute paths for quick reference
 		$this->_paths = array(

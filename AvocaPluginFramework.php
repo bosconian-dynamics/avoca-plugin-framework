@@ -8,9 +8,13 @@ Author: Adam Bosco
 Author URI: http://github.com/KuroTsuto
 */
 
+namespace AvocaWeb\PluginFramework;
+
+
+
 /* A singleton serving to load the framework, establish the JS api */
-class AvocaPluginFramework {
-	const VERSION = '0.2';						//APF Version
+class PluginFramework {
+	const VERSION = '0.2';						//Avoca Plugin Framework Version
 	const FORCE_DEBUG = FALSE;					//Force debug mode for ALL active AvocaPlugins
 
 	private static $_instance;					//THERE CAN BE ONLY ONE
@@ -31,7 +35,9 @@ class AvocaPluginFramework {
 		if( isset( self::$_instance ) )
 			return self::$_instance;
 
-		return self::$_instance = new AvocaPluginFramework( __DIR__ );
+		//if( isset() )
+
+		return self::$_instance = new PluginFramework( __DIR__ );
 	}
 
 	public static function addPlugin( $pluginFile ) {
@@ -97,6 +103,6 @@ class AvocaPluginFramework {
 	}
 }
 
-AvocaPluginFramework::instance();
+PluginFramework::instance();
 
-echo(AvocaPluginFramework::getDir('scripts'));
+echo(PluginFramework::getDir('scripts'));
